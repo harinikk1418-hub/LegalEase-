@@ -1,223 +1,201 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 import requests
 import streamlit as st
 
-from ai_core.generator import (
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import BACKEND_URL, LOGO_PATH  # noqa: E402
+from frontend.formatters import (  # noqa: E402
     format_docx, format_html_preview, format_pdf, sanitize_text,
 )
-from config import API_URL, WEB_LOGO_PATH
 
-st.set_page_config(page_title="LegalEase", page_icon="⚖️", layout="wide")
-
-st.markdown(
-    """
-    <style>
-        :root {
-            --bg: #f5f7fb;
-            --panel: rgba(255, 255, 255, 0.9);
-            --panel-strong: #ffffff;
-            --primary: #1e3a5f;
-            --primary-soft: #eaf2ff;
-            --accent: #d4af6a;
-            --text: #1e2430;
-            --muted: #58657a;
-            --border: rgba(30, 58, 95, 0.12);
-            --success: #1f8a5c;
-        }
-
-        .stApp {
-            background: linear-gradient(180deg, #eef4ff 0%, #f7f8fb 100%);
-        }
-
-        .block-container {
-            padding-top: 2rem;
-            padding-bottom: 2rem;
-            max-width: 1180px;
-        }
-
-        .hero-card {
-            background: linear-gradient(135deg, #102a43 0%, #1f456d 55%, #2a5a8a 100%);
-            border-radius: 22px;
-            padding: 2rem 2.3rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 18px 45px rgba(16, 42, 67, 0.18);
-        }
-
-        .hero-card h1 {
-            color: white;
-            margin: 0;
-            font-size: 2.3rem;
-            font-weight: 700;
-            letter-spacing: -0.04em;
-        }
-
-        .hero-card p {
-            color: rgba(255, 255, 255, 0.8);
-            margin-top: 0.6rem;
-            margin-bottom: 0;
-            font-size: 1.02rem;
-        }
-
-        .form-card {
-            background: rgba(255, 255, 255, 0.82);
-            border: 1px solid var(--border);
-            border-radius: 18px;
-            padding: 1.5rem;
-            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
-        }
-
-        .result-card {
-            background: #f8fafc;
-            border: 1px solid var(--border);
-            border-radius: 18px;
-            padding: 1rem 1.05rem;
-            margin-top: 1.25rem;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
-        }
-
-        .stTextInput > div > div > input,
-        .stTextArea > div > div > textarea {
-            border-radius: 12px !important;
-            border: 1px solid rgba(30, 58, 95, 0.15) !important;
-            background: #ffffff !important;
-            color: var(--text) !important;
-            box-shadow: none !important;
-        }
-
-        .stTextInput > div > div > input:focus,
-        .stTextArea > div > div > textarea:focus {
-            border-color: rgba(30, 58, 95, 0.55) !important;
-            box-shadow: 0 0 0 1px rgba(30, 58, 95, 0.15) !important;
-        }
-
-        .stButton > button {
-            border-radius: 12px !important;
-            font-weight: 600 !important;
-            padding: 0.7rem 1.2rem !important;
-            background: linear-gradient(135deg, #1d3557 0%, #2b4d7a 100%) !important;
-            color: white !important;
-            border: none !important;
-            box-shadow: 0 8px 24px rgba(29, 53, 87, 0.2) !important;
-        }
-
-        .stDownloadButton > button {
-            border-radius: 12px !important;
-            background: #eef4ff !important;
-            color: var(--primary) !important;
-            border: 1px solid rgba(30, 58, 95, 0.15) !important;
-            font-weight: 600 !important;
-        }
-
-        div[data-testid="stNotification"] {
-            background: rgba(255,255,255,0.9);
-            border: 1px solid var(--border);
-        }
-    </style>
-    """,
-    unsafe_allow_html=True,
+st.set_page_config(
+    page_title="LegalEase | Document drafting",
+    page_icon=":material/balance:",
+    layout="wide",
 )
 
-for key, default in {"generated_text": "", "show_edit": False, "meta": {}}.items():
-    st.session_state.setdefault(key, default)
+if "generated_text" not in st.session_state:
+    st.session_state.generated_text = ""
+if "show_edit" not in st.session_state:
+    st.session_state.show_edit = False
 
-_, col2, _ = st.columns([1, 2, 1])
-with col2:
-    if os.path.exists(WEB_LOGO_PATH):
-        st.image(WEB_LOGO_PATH, use_container_width=True)
-    else:
-        st.markdown("<h1 style='text-align:center;color:#1e3a5f'>⚖️ LegalEase</h1>", unsafe_allow_html=True)
+with st.container(horizontal=True, vertical_alignment="center"):
+    if os.path.exists(LOGO_PATH):
+        st.image(LOGO_PATH, width=190)
+    st.badge("AI-assisted drafting", icon=":material/auto_awesome:", color="green")
 
-st.markdown(
-    """
-    <div class="hero-card">
-        <h1>AI Legal Document Generator</h1>
-        <p>Draft clear, professional legal documents in minutes with guided inputs and export-ready output.</p>
-    </div>
-    """,
-    unsafe_allow_html=True,
+st.title("Build a stronger first draft", icon=":material/description:")
+st.caption(
+    "Turn the key details of your agreement into a clear, editable legal document."
 )
 
-with st.container():
-    st.markdown('<div class="form-card">', unsafe_allow_html=True)
-    col1, col2 = st.columns([1.3, 1])
-    with col1:
-        document_type = st.text_input("Document Type", placeholder="Agreement, Contract, NDA, etc.")
-    with col2:
-        dates = st.text_input("Effective Date", placeholder="DD/MM/YYYY or month/year")
+form_column, guide_column = st.columns([1.65, 0.85], gap="large")
 
-    parties = st.text_area("Parties Involved", placeholder="Example: Acme Corp. and BrightPath Solutions Ltd.")
-    terms = st.text_area("Terms & Conditions", placeholder="Add key clauses; use semicolons for bullet points.")
+with form_column:
+    with st.container(border=True):
+        st.subheader("Document details", icon=":material/edit_document:")
+        st.caption("Add the essentials. You can review and edit the draft before downloading.")
 
-    button_col, _ = st.columns([1, 4])
-    with button_col:
-        if st.button("Generate Document", type="primary"):
-            if not document_type.strip() or not parties.strip():
-                st.warning("Please enter at least the document type and the parties involved.")
-            else:
-                with st.spinner("Drafting your document..."):
-                    try:
-                        resp = requests.post(
-                            f"{API_URL}/generate",
-                            json={"document_type": document_type, "parties": parties,
-                                  "terms": terms, "dates": dates},
-                            timeout=180,
-                        )
-                        resp.raise_for_status()
-                        st.session_state.generated_text = sanitize_text(resp.json()["document"])
-                        st.session_state.meta = {"type": document_type, "terms": terms}
-                        st.session_state.show_edit = False
-                        st.success("✅ Document Generated Successfully!")
-                    except requests.HTTPError:
-                        detail = resp.json().get("detail", resp.text) if resp.content else resp.status_code
-                        st.error(f"Backend error: {detail}")
-                    except requests.RequestException as exc:
-                        st.error(f"Cannot reach the backend at {API_URL}. Is it running? ({exc})")
-    st.markdown('</div>', unsafe_allow_html=True)
+        with st.form("document_form", clear_on_submit=False):
+            type_column, date_column = st.columns(2)
+            with type_column:
+                document_type = st.text_input(
+                    "Document type",
+                    placeholder="e.g. Service agreement, NDA",
+                )
+            with date_column:
+                dates = st.text_input(
+                    "Effective date",
+                    placeholder="e.g. 1 October 2026",
+                )
+            parties = st.text_area(
+                "Parties involved",
+                placeholder="Names of the people or organizations entering the agreement",
+                height=110,
+            )
+            terms = st.text_area(
+                "Key terms and conditions",
+                placeholder="Add the main obligations, payment terms, deadlines, and other details. Separate terms with semicolons.",
+                height=150,
+            )
+            submitted = st.form_submit_button(
+                "Generate document",
+                type="primary",
+                icon=":material/auto_awesome:",
+                width="stretch",
+            )
 
-text = st.session_state.generated_text
-if text:
-    st.markdown('<div class="result-card">', unsafe_allow_html=True)
-    styled = format_html_preview(text)
-    st.markdown(
-        "<div style='background:#0f1626;color:#e6e9ef;padding:18px;border-radius:12px;"
-        f"max-height:420px;overflow-y:auto;border:1px solid rgba(255,255,255,0.08)'>{styled}</div>",
-        unsafe_allow_html=True,
+    if submitted:
+        if not (document_type.strip() and parties.strip() and dates.strip()):
+            st.warning(
+                "Please add the document type, parties involved, and effective date."
+            )
+        else:
+            with st.spinner("Preparing your first draft..."):
+                try:
+                    response = requests.post(
+                        f"{BACKEND_URL}/generate",
+                        json={
+                            "document_type": document_type,
+                            "parties": parties,
+                            "terms": terms,
+                            "dates": dates,
+                        },
+                        timeout=180,
+                    )
+                    if response.status_code == 200:
+                        payload = response.json()
+                        document = payload.get("document")
+                        if not isinstance(document, str) or not document.strip():
+                            st.error("The backend returned an empty document.")
+                        else:
+                            st.session_state.generated_text = sanitize_text(document)
+                            st.session_state.doc_type = document_type
+                            st.session_state.terms = terms
+                            st.session_state.show_edit = False
+                            st.success("Your first draft is ready to review.")
+                    else:
+                        if response.status_code == 503:
+                            st.warning(
+                                "Gemini is temporarily unavailable. Please try again "
+                                "in a few seconds; your details are still here."
+                            )
+                        else:
+                            try:
+                                detail = response.json().get("detail", response.text)
+                            except ValueError:
+                                detail = response.text
+                            st.error(f"Backend error {response.status_code}: {detail}")
+                except requests.exceptions.RequestException as error:
+                    st.error(
+                        f"Could not reach the backend at {BACKEND_URL}. "
+                        f"Check that the API is running. ({error})"
+                    )
+                except (ValueError, TypeError) as error:
+                    st.error(f"The backend returned an invalid response: {error}")
+
+with guide_column:
+    with st.container(border=True):
+        st.subheader("A simple workflow", icon=":material/steps:")
+        st.markdown(
+            """
+            **1. Share the essentials**  
+            Add the parties, date, and main terms.
+
+            **2. Review your draft**  
+            Edit the generated text to suit your needs.
+
+            **3. Export when ready**  
+            Download as TXT, DOCX, or PDF.
+            """
+        )
+    st.caption(
+        "LegalEase creates a starting point, not legal advice. "
+        "Ask a qualified lawyer to review documents before signing."
     )
-    st.markdown('</div>', unsafe_allow_html=True)
 
-    if st.button("✏️ Edit Document"):
-        st.session_state.show_edit = not st.session_state.show_edit
+if st.session_state.generated_text:
+    st.space("large")
+    st.header("Your document", icon=":material/description:")
+    st.caption("Review the draft carefully. Your edits are included in every download.")
 
-    if st.session_state.show_edit:
-        st.session_state.generated_text = st.text_area(
-            "Edit Document Below:", value=st.session_state.generated_text, height=300
-        )
-        text = st.session_state.generated_text
+    with st.container(border=True):
+        if st.session_state.show_edit:
+            st.text_area(
+                "Edit document",
+                key="generated_text",
+                height=420,
+            )
+        else:
+            st.markdown(
+                format_html_preview(st.session_state.generated_text),
+                unsafe_allow_html=True,
+            )
 
-    meta = st.session_state.meta
-    doc_type = meta.get("type", "Legal Document")
-    base = doc_type.replace(" ", "_").lower()
+        if st.button(
+            "Finish editing" if st.session_state.show_edit else "Edit document",
+            icon=(
+                ":material/check:"
+                if st.session_state.show_edit
+                else ":material/edit:"
+            ),
+        ):
+            st.session_state.show_edit = not st.session_state.show_edit
+            st.rerun()
 
-    dl_col1, dl_col2, dl_col3 = st.columns(3)
-    with dl_col1:
-        st.download_button("📄 TXT", data=text, file_name=f"{base}.txt", mime="text/plain")
-    with dl_col2:
+    text = st.session_state.generated_text
+    document_type = st.session_state.get("doc_type", "Legal Document")
+    terms = st.session_state.get("terms", "")
+    filename = document_type.strip().replace(" ", "_").lower() or "legal_document"
+
+    st.subheader("Download your draft", icon=":material/download:")
+    txt_column, docx_column, pdf_column = st.columns(3)
+    with txt_column:
         st.download_button(
-            "📝 DOCX",
-            data=format_docx(text, doc_type, meta.get("terms", "")),
-            file_name=f"{base}.docx",
+            "Download TXT",
+            data=text,
+            file_name=f"{filename}.txt",
+            mime="text/plain",
+            icon=":material/description:",
+            width="stretch",
+        )
+    with docx_column:
+        st.download_button(
+            "Download DOCX",
+            data=format_docx(text, document_type, terms),
+            file_name=f"{filename}.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            icon=":material/article:",
+            width="stretch",
         )
-    with dl_col3:
+    with pdf_column:
         st.download_button(
-            "📕 PDF",
-            data=format_pdf(text, doc_type, meta.get("terms", "")),
-            file_name=f"{base}.pdf",
+            "Download PDF",
+            data=format_pdf(text, document_type, terms),
+            file_name=f"{filename}.pdf",
             mime="application/pdf",
+            icon=":material/picture_as_pdf:",
+            width="stretch",
         )
-else:
-    st.info("Click 'Generate Document' to start")

@@ -1,0 +1,87 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "LegalEase API test server",
+			"type": "shell",
+			"command": "C:\\Users\\ACER\\Documents\\LegalEase (2)\\venv\\Scripts\\python.exe",
+			"args": [
+				"-m",
+				"uvicorn",
+				"legalEaseAPI.main:app",
+				"--reload",
+				"--host",
+				"127.0.0.1",
+				"--port",
+				"8001",
+				"--app-dir",
+				"C:\\Users\\ACER\\Documents\\LegalEase (2)\\LegalEase"
+			],
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "LegalEase web app",
+			"type": "shell",
+			"command": "C:\\Users\\ACER\\Documents\\LegalEase (2)\\venv\\Scripts\\python.exe",
+			"args": [
+				"-m",
+				"streamlit",
+				"run",
+				"C:\\Users\\ACER\\Documents\\LegalEase (2)\\LegalEase\\frontend\\app.py",
+				"--server.port",
+				"8501",
+				"--server.address",
+				"127.0.0.1"
+			],
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "LegalEase web app (8502)",
+			"type": "shell",
+			"command": "C:\\Users\\ACER\\Documents\\LegalEase (2)\\venv\\Scripts\\python.exe",
+			"args": [
+				"-m",
+				"streamlit",
+				"run",
+				"C:\\Users\\ACER\\Documents\\LegalEase (2)\\LegalEase\\frontend\\app.py",
+				"--server.port",
+				"8502",
+				"--server.address",
+				"127.0.0.1"
+			],
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "LegalEase backend",
+			"type": "shell",
+			"command": "C:\\Users\\ACER\\Documents\\LegalEase (2)\\venv\\Scripts\\python.exe",
+			"args": [
+				"-m",
+				"uvicorn",
+				"legalEaseAPI.main:app",
+				"--host",
+				"127.0.0.1",
+				"--port",
+				"8000"
+			],
+			"options": {
+				"cwd": "C:\\Users\\ACER\\Documents\\LegalEase (2)\\LegalEase"
+			},
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Check API",
+			"type": "shell",
+			"command": "& 'C:\\Users\\ACER\\Documents\\LegalEase (2)\\venv\\Scripts\\python.exe' -c \"import requests; r = requests.get('http://127.0.0.1:8000/health', timeout=10); print(r.status_code); print(r.text)\"",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		}
+	]
+}
